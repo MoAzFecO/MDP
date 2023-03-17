@@ -4,7 +4,11 @@ program
     : defstates defactions transitions EOF
     ;
 
-defstates : STATES ID (',' ID)* ';';
+defstates : STATES ID (',' ID)* ';' | STATES ID ':' INT (',' ID ':' INT)* ';' ;
+
+statenoreward : STATES ID (',' ID)* ';';
+statereward : STATES ID ':' INT (',' ID ':' INT)* ';';
+
 defactions : ACTIONS ID (',' ID)* ';';
 
 transitions : trans (trans)* ;

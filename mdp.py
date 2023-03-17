@@ -2,7 +2,6 @@ from antlr4 import *
 from gramLexer import gramLexer
 from gramListener import gramListener
 from gramParser import gramParser
-import sys
 
 from class_mdp import MDP
 
@@ -13,12 +12,22 @@ class gramPrintListener(gramListener):
         self.mdp = mdp
         
     def enterDefstates(self, ctx):
-        print("States: %s" % str([str(x) for x in ctx.ID()]))
-        for x in ctx.ID():
-            state = str(x)
-            if self.mdp.init is None:
-                self.mdp.init = state
-            self.mdp.add_state(state)
+        r = ctx.INT()
+        if r == []:
+            print("States: %s" % str([str(x) for x in ctx.ID()]))
+            for x in ctx.ID():
+                state = str(x)
+                if self.mdp.init is None:
+                    self.mdp.init = state
+                self.mdp.add_state(state)
+        else :
+            liste = zip(ctx.ID(),ctx.INT())
+            for x, reward in liste:
+                state = str(x)
+                if self.mdp.init is None:
+                    self.mdp.init = state
+                self.mdp.add_state_reward(state, reward)
+                print(f"States {state} with reward {reward}")
 
     def enterDefactions(self, ctx):
         print("Actions: %s" % str([str(x) for x in ctx.ID()]))
@@ -52,7 +61,7 @@ def main():
     printer = gramPrintListener(MDP())
     walker = ParseTreeWalker()
     walker.walk(printer, tree)
-    
+    MDP.Model_checking.itération_valeurs(printer.mdp.states, 0.5, 0.5)
     printer.mdp.Graph(printer.mdp.init, 'mdp')
     printer.mdp.Simulation(printer.mdp.states[printer.mdp.init]).main()
    

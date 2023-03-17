@@ -4,6 +4,7 @@ import numpy as np
 
 class MDP:
     states = {}
+
     def __init__(self):
         self.init = None
         self.actions = []
@@ -11,8 +12,43 @@ class MDP:
     class MDPException(Exception):
         pass
 
+    class State: 
+        def __init__(self,name):
+            self.name = name
+            self.transition_state = 0  # 0 pour N/A, 1 pour sans action, 2 pour avec actions 
+            self.transitions = []
+            self.reward = None
+        
+    class TransAct:
+        def __init__(self,start,action,targets,weights):
+            self.start = start
+            self.action = action
+            self.targets = targets
+            self.weights = weights
+
+        def actionToTarget(self):
+            target = random.choices(self.targets, self.weights, k=1)[0]
+            probability = self.weights[self.targets.index(target)]/np.sum(self.weights)
+            return target, probability
+
+    class TransNoAct:
+        def __init__(self,start,targets,weights):
+            self.start = start
+            self.targets = targets
+            self.weights = weights
+        
+        def actionToTarget(self):
+            target = random.choices(self.targets, self.weights, k=1)[0]
+            probability = self.weights[self.targets.index(target)]/np.sum(self.weights)
+            return target, probability
+
     def add_state(self,state):
         self.states[state] = MDP.State(state)
+
+    def add_state_reward(self, state, reward):
+        s = MDP.State(state)
+        s.reward = reward
+        self.states[state] = s
 
     def add_action(self,action):
         self.actions.append(action)  
@@ -20,28 +56,33 @@ class MDP:
     def add_transAct(self, dep, act, ids, weights):
         state = self.states[dep]
         transAct = MDP.TransAct(dep, act, ids, weights)
+        if state.transition_state == 1:
+            raise MDP.MDPException("Un état ne peut pas avoir des transitions avec et sans actions")
         for transition in state.transitions :
             if act == transition.action:
                 raise MDP.MDPException(f"L'état {dep} a 2 transitions avec l'action {act}")
         state.transitions.append(transAct)
-        if state.transition_state == 1:
-            raise MDP.MDPException("Un état ne peut pas avoir des transitions avec et sans actions")
         state.transition_state = 2        
         if not dep in MDP.states:
-            raise MDP.MDPException(f"L'état {dep} n'est pas défini")
+            #raise MDP.MDPException(f"L'état {dep} n'est pas défini")
+            print(f"L'état {dep} n'est pas défini\n")
+            self.states[dep] = MDP.State(dep)
         for target in ids:
             if not target in MDP.states :
-                raise MDP.MDPException(f"L'état {target} n'est pas défini")
+                #raise MDP.MDPException(f"L'état {target} n'est pas défini")
+                print(f"L'état {target} n'est pas défini\n")
+                self.states[target] = MDP.State(target)
         if not act in self.actions :
-            raise MDP.MDPException(f"L'action {act} n'est pas défini")
+            #raise MDP.MDPException(f"L'action {act} n'est pas définie")
+            print(f"L'action {act} n'est pas définie\n")
+            self.actions.append(act)
         for poids in weights:
             try:
-                if int(poids) < 0:
-                    raise MDP.MDPException("Le poids est négatif")
+                if int(poids) <= 0:
+                    raise MDP.MDPException(f"Un poids de l'état {target} avec l'action {act} est négatif ou nul")
             except ValueError:
                 print("Le poids est mal défini")
 
-    
     def add_transNoAct(self, dep, ids, weights):
         state = self.states[dep]
         transNoAct = MDP.TransNoAct(dep, ids, weights)
@@ -58,57 +99,10 @@ class MDP:
                 raise MDP.MDPException(f"L'état {target} n'est pas défini")
         for poids in weights:
             try:
-                if int(poids) < 0:
-                    raise MDP.MDPException("Le poids est négatif")
+                if int(poids) <= 0:
+                    raise MDP.MDPException(f"Un poids de l'état {target} est négatif ou nul")
             except ValueError:
                 print("Le poids est mal défini")
-
-    class State: 
-        def __init__(self,name):
-            self.name = name
-            self.transition_state = 0  # 0 pour N/A, 1 pour sans action, 2 pour avec actions 
-            self.transitions = []
-        
-        def __repr__(self):
-            pass
-            #if self.transAct == []:
-                #return f'{self.transNoAct}'
-            #else:
-                #liste_transitions = [f'{transition}' for transition in self.transAct]
-                #return '\n'.join(liste_transitions)
-        
-    class TransAct:
-        def __init__(self,start,action,targets,weights):
-            self.start = start
-            self.action = action
-            self.targets = targets
-            self.weights = weights
-
-        def actionToTarget(self):
-            target = random.choices(self.targets, self.weights, k=1)[0]
-            probability = self.weights[self.targets.index(target)]/np.sum(self.weights)
-            return target, probability
-
-        def __repr__(self) -> str:
-            return ("Action "+ self.action + 
-                    " and targets " + str(self.targets) + 
-                    " with weights " + str(self.weights))
-
-    class TransNoAct:
-        def __init__(self,start,targets,weights):
-            self.start = start
-            self.targets = targets
-            self.weights = weights
-        
-        def actionToTarget(self):
-            target = random.choices(self.targets, self.weights, k=1)[0]
-            probability = self.weights[self.targets.index(target)]/np.sum(self.weights)
-            return target, probability
-
-        def __repr__(self) -> str:
-            return ("Transition from " + self.start + 
-                    " with no action and targets " + str(self.targets) + 
-                    " with weights " + str(self.weights))
         
     class Simulation:
 
@@ -128,8 +122,11 @@ class MDP:
             while True :
                 longueur = input("Nombre de transitions de la simulation : ")
                 try:
-                    longueur = int(longueur)
-                    break
+                    if int(longueur) > 0:
+                        longueur = int(longueur)
+                        break
+                    else:
+                        print("Format incorrect")
                 except ValueError:
                     print("Format incorrect")
             if choix == '2':
@@ -193,8 +190,6 @@ class MDP:
                     previous_node = self.curseur.name
                     not_final_state = self.next()  
                     graphe.update(previous_node, self.curseur.name)
-
-
             if not not_final_state:
                 print(f"{self.curseur.name} est un état final")
             print('historique = ',self.historique)
@@ -216,21 +211,24 @@ class MDP:
             g.attr('node', shape='point')
             colors = ['red', 'blue', 'magenta']
             ind_color = 0
+            ind_action = 0
             for state in MDP.states.values():
                 if state.transition_state == 0:
                     pass
                 elif state.transition_state == 1:
                     transition = state.transitions[0]
+                    somme_poids = np.sum(transition.weights)
                     for k in range(len(transition.targets)):
-                        g.edge(state.name, transition.targets[k], label= str(transition.weights[k]/np.sum(transition.weights)))
+                        g.edge(state.name, transition.targets[k], label= str(transition.weights[k]/somme_poids))
                 else:
                     for transition in state.transitions:
                         color = colors[ind_color%3]
                         ind_color += 1
-                        g.edge(state.name, transition.action, label=transition.action,  dir='none', color='black', fontcolor=color)
+                        g.edge(state.name, str(ind_action), label=transition.action,  dir='none', color=color, fontcolor=color)
+                        somme_poids = np.sum(transition.weights)
                         for k in range(len(transition.targets)):
-                            g.edge(transition.action, transition.targets[k], label= str(transition.weights[k]/np.sum(transition.weights)), color=color, fontcolor=color)
-
+                            g.edge(str(ind_action), transition.targets[k], label= str(transition.weights[k]/somme_poids), color=color, fontcolor=color)
+                        ind_action += 1
             # Render the graph
             g.render(nom, format='png', view=False)
             self.g = g
@@ -243,3 +241,69 @@ class MDP:
             g.render(self.nom, format='png', view=False)
             self.g = g
 
+
+    class Model_checking: # chaine de Markov ou MDP
+        def __init__(self) -> None:
+            pass
+        
+        def monte_carlo():
+            pass
+        
+        def build_matrice(states : dict):
+            matrice = []
+            n = len(states)
+            states_list = [str(state) for state in states.keys()]
+            for state in states.values() :
+                for transition in state.transitions:
+                    vecteur = [0 for k in range(n)]
+                    somme_poids = np.sum(transition.weights)
+                    for target, weight in zip(transition.targets, transition.weights):
+                        indice = states_list.index(target)
+                        vecteur[indice] = weight/somme_poids
+                    matrice.append(vecteur)
+
+        def accessibilite_MC(  start, end):
+
+            pass
+
+        def accessibilite_MC(self, start, end):
+            pass
+
+        def itération_valeurs(states : dict, gamma, epsilon):
+            nb_states = len(states)
+            v0 = {state : 0 for state in states.keys()}
+            v = {state : epsilon +1 for state in states.keys()}
+            n = 0
+            def norme(d1,d2):
+                return max([abs(d1[k]-d2[k]) for k in d1.values()])
+            while n==0 or norme(v,v0) > epsilon:
+                v0 = v.copy()
+                v={}
+                #v = {s.name : max([s.reward + gamma * sum([(w/sum(t.weights))*v0[target] for w, target in zip(t.weights,t.targets) ]) for t in s.transitions]) for s in states.values()}
+
+                for s in states.values():
+                    v[s.name] = max([0 + gamma * sum([(w/sum(t.weights))*v0[target] for w, target in zip(t.weights,t.targets) ]) for t in s.transitions])
+                #for k, state in enumerate(states):
+                #    v[k] = max([state.reward + gamma*np.sum([ for state2 in ])  for action in states.values()])
+                n+=1
+
+        def q_learning(states, gamma):
+            boucle = 1
+            for t in range(tot):
+                state = np.random.choice(states)
+                action = choose_action(state)
+                (next_state, reward) = simulate(state, action)
+                if action == 'a':
+                    num = 0
+                else:
+                    num=1
+                delta = reward + gamma*max(q[int(next_state[1])][0],q[int(next_state[1])][1]) -q[int(state[1])][num]
+                q[int(state[1])][num] += delta/boucle
+                boucle += 1
+
+
+
+
+
+if __name__=='__main__':
+    pass
