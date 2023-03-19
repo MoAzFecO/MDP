@@ -36,6 +36,7 @@ class MDP:
             self.start = start
             self.targets = targets
             self.weights = weights
+            self.action = None
         
         def actionToTarget(self):
             target = random.choices(self.targets, self.weights, k=1)[0]
@@ -47,7 +48,7 @@ class MDP:
 
     def add_state_reward(self, state, reward):
         s = MDP.State(state)
-        s.reward = reward
+        s.reward = int(str(reward))
         self.states[state] = s
 
     def add_action(self,action):
@@ -224,7 +225,7 @@ class MDP:
                     for transition in state.transitions:
                         color = colors[ind_color%3]
                         ind_color += 1
-                        g.edge(state.name, str(ind_action), label=transition.action,  dir='none', color=color, fontcolor=color)
+                        g.edge(state.name, str(ind_action), label=transition.action,  dir='none', color='black', fontcolor=color)
                         somme_poids = np.sum(transition.weights)
                         for k in range(len(transition.targets)):
                             g.edge(str(ind_action), transition.targets[k], label= str(transition.weights[k]/somme_poids), color=color, fontcolor=color)
@@ -262,30 +263,43 @@ class MDP:
                         vecteur[indice] = weight/somme_poids
                     matrice.append(vecteur)
 
-        def accessibilite_MC(  start, end):
+        def accessibilite(start, end):
+            states = MDP.states
+            à_visiter = [start]
+            visité = []
+            accesssible = False
+            while à_visiter != []:
+                noeud = à_visiter.pop()
+                visité.append(noeud)
+                if noeud == end :
+                    accesssible =True
+                    break
+                for transition in states[noeud].transitions :
+                    for target in transition.targets :
+                        if (not target in visité) and (not target in à_visiter):
+                            à_visiter.append(target)
+            if accesssible:
+                print(f"L'état {end} est accessible depuis l'état {start}")
+            else :
+                print(f"L'état {end} n'est pas accessible depuis l'état {start}")
 
-            pass
 
-        def accessibilite_MC(self, start, end):
-            pass
-
-        def itération_valeurs(states : dict, gamma, epsilon):
-            nb_states = len(states)
+        def itération_valeurs(gamma, epsilon):
+            states = MDP.states
             v0 = {state : 0 for state in states.keys()}
-            v = {state : epsilon +1 for state in states.keys()}
+            v = {state : epsilon +2 for state in states.keys()}
             n = 0
             def norme(d1,d2):
-                return max([abs(d1[k]-d2[k]) for k in d1.values()])
-            while n==0 or norme(v,v0) > epsilon:
+                return max([abs(d1[k]-d2[k]) for k in d1.keys()])
+            while norme(v,v0) > epsilon:
                 v0 = v.copy()
                 v={}
-                #v = {s.name : max([s.reward + gamma * sum([(w/sum(t.weights))*v0[target] for w, target in zip(t.weights,t.targets) ]) for t in s.transitions]) for s in states.values()}
-
-                for s in states.values():
-                    v[s.name] = max([0 + gamma * sum([(w/sum(t.weights))*v0[target] for w, target in zip(t.weights,t.targets) ]) for t in s.transitions])
-                #for k, state in enumerate(states):
-                #    v[k] = max([state.reward + gamma*np.sum([ for state2 in ])  for action in states.values()])
+                v = {state.name : max([state.reward + gamma * sum([(weight/sum(transition.weights))*v0[target] for weight, target in zip(transition.weights,transition.targets) ]) for transition in state.transitions]) for state in states.values()}
+                #for s in states.values():
+                    #v[s.name] = max([0 + gamma * sum([(w/sum(t.weights))*v0[target] for w, target in zip(t.weights,t.targets) ]) for t in s.transitions])
                 n+=1
+            sigma = {state.name : state.transitions[np.argmax([state.reward + gamma * sum([(weight/sum(transition.weights))*v0[target] for weight, target in zip(transition.weights,transition.targets) ]) for transition in state.transitions])].action for state in states.values()}
+            print("algo itération de valeurs :\nV : ", v, ", sigma : ", sigma)
 
         def q_learning(states, gamma):
             boucle = 1

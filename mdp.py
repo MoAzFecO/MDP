@@ -26,8 +26,9 @@ class gramPrintListener(gramListener):
                 state = str(x)
                 if self.mdp.init is None:
                     self.mdp.init = state
-                self.mdp.add_state_reward(state, reward)
                 print(f"States {state} with reward {reward}")
+                self.mdp.add_state_reward(state, reward)
+                
 
     def enterDefactions(self, ctx):
         print("Actions: %s" % str([str(x) for x in ctx.ID()]))
@@ -61,7 +62,8 @@ def main():
     printer = gramPrintListener(MDP())
     walker = ParseTreeWalker()
     walker.walk(printer, tree)
-    MDP.Model_checking.itération_valeurs(printer.mdp.states, 0.5, 0.5)
+    MDP.Model_checking.itération_valeurs(0.5, 0.5)
+    MDP.Model_checking.accessibilite("S0", "S3")
     printer.mdp.Graph(printer.mdp.init, 'mdp')
     printer.mdp.Simulation(printer.mdp.states[printer.mdp.init]).main()
    
