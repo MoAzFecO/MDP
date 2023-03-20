@@ -62,10 +62,10 @@ def main():
     printer = gramPrintListener(MDP())
     walker = ParseTreeWalker()
     walker.walk(printer, tree)
-    MDP.Model_checking.itération_valeurs(0.5, 0.5)
-    MDP.Model_checking.accessibilite("S0", "S3")
     printer.mdp.Graph(printer.mdp.init, 'mdp')
-    printer.mdp.Simulation(printer.mdp.states[printer.mdp.init]).main()
+    printer.mdp.mode()
+    
+
    
 
 if __name__ == '__main__':

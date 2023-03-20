@@ -8,6 +8,21 @@ class MDP:
     def __init__(self):
         self.init = None
         self.actions = []
+
+
+    def mode(self):
+        while True:
+            mode = input("1 : simulation \n2 : accessibilité \n3 : itération de valeurs \nChoix du mode : ")
+            if mode in [f"{k}" for k in range(1, 4)]:
+                break
+            print("Format incorrect")
+        self.mode = int(mode)
+        if self.mode == 1:
+            self.Simulation(self.states[self.init]).main()
+        if self.mode == 2 :
+            self.Model_checking.accessibilite("S0", "S3")
+        if self.mode == 3 :
+            self.Model_checking.itération_valeurs(0.5, 0.5)
     
     class MDPException(Exception):
         pass
@@ -116,8 +131,8 @@ class MDP:
         
         def choix_simulation(self):
             while True:
-                choix = input("1 : automatique \n2 : manuel \nChoix simulation : ")
-                if choix in ('1', '2'):
+                choix = input("Types de simulation :\n1 : automatique \n2 : semi-automatique (choix des actions) \n3 : manuel \nChoix simulation : ")
+                if choix in ('1', '2','3'):
                     break
                 print("Format incorrect")
             while True :
@@ -130,12 +145,8 @@ class MDP:
                         print("Format incorrect")
                 except ValueError:
                     print("Format incorrect")
-            if choix == '2':
-                stop = input("Stop à chaque état (y/n): ")
-                if stop == 'y':
+            if choix == '3':
                     self.stop = True
-                else :
-                    self.stop = False
             self.choix = int(choix)
             self.nb_transitions = longueur
         
