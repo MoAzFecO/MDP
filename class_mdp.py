@@ -12,18 +12,30 @@ class MDP:
 
     def mode(self):
         while True:
-            mode = input("1 : simulation \n2 : accessibilité \n3 : itération de valeurs \nChoix du mode : ")
-            if mode in [f"{k}" for k in range(1, 4)]:
+            mode = input("1 : simulation \n2 : accessibilité \n" +
+                         "3 : itération de valeurs \n4 : q-learning \n" +
+                         "5 : probabilités chaine de Markov \n"
+                         "Choix du mode : ")
+            if mode in [f"{k}" for k in range(1, 6)]:
                 break
             print("Format incorrect")
         self.mode = int(mode)
         if self.mode == 1:
             self.Simulation(self.states[self.init]).main()
         if self.mode == 2 :
-            self.Model_checking.accessibilite("S0", "S3")
+            depart = input("Sommet de départ : ")
+            fin = input("Sommet d'arrivée : ")
+            self.Model_checking.accessibilite(depart, fin)
         if self.mode == 3 :
-            self.Model_checking.itération_valeurs(0.5, 0.5)
-    
+            gamma = float(input("Gamma : "))
+            epsilon = float(input("Epsilon : "))
+            self.Model_checking.itération_valeurs(gamma, epsilon)
+        if self.mode == 4 :
+            gamma = float(input("Gamma : "))
+            tot = int(input("Nombre d'itérations : "))
+            self.Model_checking.q_learning(gamma, tot)
+        if self.mode == 5 :
+            self.Model_checking.chaine_Markov_prob()
     class MDPException(Exception):
         pass
 
@@ -123,6 +135,7 @@ class MDP:
     class Simulation:
 
         historique = []
+        recompense = 0
 
         def __init__(self, curseur) -> None:
             self.curseur = curseur
@@ -181,6 +194,8 @@ class MDP:
             self.compteur += 1
             self.historique.append(choix_action)
             self.historique.append(next_state)
+            if next_state.reward != None :
+                self.recompense += next_state.reward
 
             if state.transition_state == 1 :
                 print(f'{self.compteur} : From {state.name} with no action to {next_state} with probability {probability}')
@@ -204,6 +219,8 @@ class MDP:
                     graphe.update(previous_node, self.curseur.name)
             if not not_final_state:
                 print(f"{self.curseur.name} est un état final")
+            if self.recompense != 0:
+                print("reward = ", self.recompense)
             print('historique = ',self.historique)
     
     class Graph:
@@ -255,11 +272,6 @@ class MDP:
 
 
     class Model_checking: # chaine de Markov ou MDP
-        def __init__(self) -> None:
-            pass
-        
-        def monte_carlo():
-            pass
         
         def build_matrice(states : dict):
             matrice = []
@@ -273,6 +285,7 @@ class MDP:
                         indice = states_list.index(target)
                         vecteur[indice] = weight/somme_poids
                     matrice.append(vecteur)
+            print(matrice)
 
         def accessibilite(start, end):
             states = MDP.states
@@ -310,21 +323,51 @@ class MDP:
                     #v[s.name] = max([0 + gamma * sum([(w/sum(t.weights))*v0[target] for w, target in zip(t.weights,t.targets) ]) for t in s.transitions])
                 n+=1
             sigma = {state.name : state.transitions[np.argmax([state.reward + gamma * sum([(weight/sum(transition.weights))*v0[target] for weight, target in zip(transition.weights,transition.targets) ]) for transition in state.transitions])].action for state in states.values()}
-            print("algo itération de valeurs :\nV : ", v, ", sigma : ", sigma)
+            print("algo itération de valeurs :\nV : ", v, "\nSigma : ", sigma)
 
-        def q_learning(states, gamma):
+        def q_learning(gamma, tot):
+            states = MDP.states
             boucle = 1
-            for t in range(tot):
-                state = np.random.choice(states)
-                action = choose_action(state)
-                (next_state, reward) = simulate(state, action)
-                if action == 'a':
-                    num = 0
-                else:
-                    num=1
-                delta = reward + gamma*max(q[int(next_state[1])][0],q[int(next_state[1])][1]) -q[int(state[1])][num]
-                q[int(state[1])][num] += delta/boucle
+            q = {state : {action : 0 for action in [t.action for t in states[state].transitions]} for state in states.keys()}
+            for k in range(tot):
+                state = random.choices([key for key in states.keys()])[0]
+                transition = random.choices(states[state].transitions)[0]
+                action = transition.action
+                next_state, probability = transition.actionToTarget()
+                reward = states[next_state].reward
+                #update q
+                actions = [t.action for t in states[next_state].transitions]
+                delta = reward + gamma*max([q[next_state][act] for act in actions]) -q[state][action]
+                q[state][action] += delta/boucle
                 boucle += 1
+            print(q)
+
+        def chaine_Markov_prob():
+            from scipy.linalg import null_space
+            states = MDP.states
+            list_states = [key for key in states.keys()]
+            n = len(list_states)
+            P = []
+            for state in list_states :
+                state = states[state]
+                vecteur = [0 for k in range(n)]
+                transition = state.transitions[0]
+                somme_poids = np.sum(transition.weights)
+                for target, weight in zip(transition.targets, transition.weights):
+                    indice = list_states.index(target)
+                    vecteur[indice] = weight/somme_poids
+                P.append(vecteur)
+            P = np.array(P)
+            I = np.eye(n)
+            IP = I-P
+            null_space = null_space(np.transpose(IP))
+            q = null_space[:, 0]
+            if np.all(q == 0):
+                print("Il n'y a pas de solution non nulle.")
+            else:
+                q = q / np.sum(q)
+                print("La solution de l'équation est le vecteur q =", q, " où les états sont", list_states)
+
 
 
 
